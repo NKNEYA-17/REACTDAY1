@@ -1,0 +1,799 @@
+//App.js
+import React, { useState } from "react";
+import SignupForm from "./components/SignUp";
+import LoginForm from "./components/Login";
+import Dashboard from "./components/Dashboard";
+import BookingForm from "./components/BookingForm";
+import ThankYou from "./components/ThankYou";
+
+const App = () => {
+  const [currentPage, setCurrentPage] = useState("signup"); // Start at signup
+  const [signupData, setSignupData] = useState({ email: "", password: "" });
+  const [selectedRoom, setSelectedRoom] = useState(null); // Store selected room
+  const [nameForThankYou, setNameForThankYou] = useState(""); // Store user's name for Thank You page
+
+  // Function to switch between pages
+  const renderPage = () => {
+    switch (currentPage) {
+      case "login":
+        return <LoginForm setPage={setCurrentPage} signupData={signupData} />;
+      case "signup":
+        return <SignupForm setPage={setCurrentPage} setSignupData={setSignupData} />;
+      case "home":
+        return <Dashboard setPage={setCurrentPage} setSelectedRoom={setSelectedRoom} />;
+      case "bookingForm":
+        return <BookingForm setPage={setCurrentPage} selectedRoom={selectedRoom} setNameForThankYou={setNameForThankYou} />;
+      case "thankYou":
+        return <ThankYou name={nameForThankYou} setPage={setCurrentPage} />;
+      default:
+        return <SignupForm setPage={setCurrentPage} setSignupData={setSignupData} />;
+    }
+  };
+
+  return <div>{renderPage()}</div>;
+};
+export default App;
+
+//BookingManagement.js
+import React from "react";
+import { Box, Typography, List, ListItem, ListItemText } from "@mui/material";
+
+const BookingManagement = () => {
+  const bookings = [
+    { id: 1, customer: "John Doe", room: "Deluxe Room", status: "Confirmed" },
+    { id: 2, customer: "Jane Smith", room: "Suite", status: "Pending" },
+  ];
+
+  return (
+    <Box>
+      <Typography variant="h5" gutterBottom>
+        Current Bookings
+      </Typography>
+      <List>
+        {bookings.map((booking) => (
+          <ListItem key={booking.id}>
+            <ListItemText
+              primary={`${booking.customer} - ${booking.room}`}
+              secondary={`Status: ${booking.status}`}
+            />
+          </ListItem>
+        ))}
+      </List>
+    </Box>
+  );
+};
+
+export default BookingManagement;
+
+//BookingForm.js
+import React, { useState } from "react";
+import { Box, TextField, Button, Typography } from "@mui/material";
+import axios from "axios";
+
+const BookingForm = ({ setPage, selectedRoom, setNameForThankYou }) => {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phoneNumber: "",
+    checkInDate: "",
+    checkOutDate: "",
+    time: "",
+  });
+  const [error, setError] = useState("");
+
+  const handleBooking = async () => {
+    // Basic validation
+    if (!formData.name || !formData.email || !formData.phoneNumber || !formData.checkInDate || !formData.checkOutDate) {
+      setError("All fields are required");
+      return;
+    }
+
+    try {
+      // Save booking data in db.json
+      await axios.post("http://localhost:5000/bookings", {
+        ...formData,
+        room: selectedRoom,  // Include selected room details in booking
+      });
+
+      setNameForThankYou(formData.name); // Set the user's name for the Thank You page
+      setPage("thankYou");  // Redirect to Thank You page after booking
+    } catch (err) {
+      console.error("Error during booking:", err);
+      setError("Something went wrong, please try again later.");
+    }
+  };
+
+  return (
+    <Box sx={{ maxWidth: 400, margin: "0 auto", padding: 4 }} className="hlo">
+      <Typography variant="h5" gutterBottom>Book a Room</Typography>
+
+      {/* Display selected room details */}
+      {selectedRoom && (
+        <Typography variant="h6" gutterBottom>
+          Room: {selectedRoom.name} (${selectedRoom.price}/night)
+        </Typography>
+      )}
+      
+      <TextField
+        label="Full Name"
+        value={formData.name}
+        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+        fullWidth
+        margin="normal"
+      />
+      <TextField
+        label="Email"
+        value={formData.email}
+        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+        fullWidth
+        margin="normal"
+      />
+      <TextField
+        label="Phone Number"
+        value={formData.phoneNumber}
+        onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+        fullWidth
+        margin="normal"
+      />
+      <TextField
+        label="Check-In Date"
+        type="date"
+        value={formData.checkInDate}
+        onChange={(e) => setFormData({ ...formData, checkInDate: e.target.value })}
+        fullWidth
+        margin="normal"
+        InputLabelProps={{ shrink: true }}
+      />
+      <TextField
+        label="Check-Out Date"
+        type="date"
+        value={formData.checkOutDate}
+        onChange={(e) => setFormData({ ...formData, checkOutDate: e.target.value })}
+        fullWidth
+        margin="normal"
+        InputLabelProps={{ shrink: true }}
+      />
+      <TextField
+        label="Time"
+        type="time"
+        value={formData.time}
+        onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+        fullWidth
+        margin="normal"
+        InputLabelProps={{ shrink: true }}
+      />
+
+      {error && <Typography color="error">{error}</Typography>}
+
+      <Button variant="contained" onClick={handleBooking} sx={{ mt: 3 }}>
+        Submit Booking
+      </Button>
+    </Box>
+  );
+};
+
+export default BookingForm;
+
+//BookingHistory.js
+// components/BookingHistory.js
+import { useState, useEffect } from 'react';
+import { Container, Box, Typography, List, ListItem, ListItemText, Divider } from '@mui/material';
+import axios from 'axios';
+
+const BookingHistory = () => {
+  const [bookings, setBookings] = useState([]);
+
+  useEffect(() => {
+    // Fetch booking history when the component mounts
+    const fetchBookingHistory = async () => {
+      try {
+        const response = await axios.get('http://localhost:3001/bookings'); // Replace with your actual API
+        setBookings(response.data);
+      } catch (error) {
+        console.error('Error fetching booking history:', error);
+      }
+    };
+    fetchBookingHistory();
+  }, []);
+
+  return (
+    <Container>
+      <Box mt={4}>
+        <Typography variant="h4" gutterBottom>
+          Booking History
+        </Typography>
+        {bookings.length > 0 ? (
+          <List>
+            {bookings.map((booking) => (
+              <div key={booking.id}>
+                <ListItem sx={{ bgcolor: 'grey.100', mb: 1, borderRadius: 1 }}>
+                  <ListItemText
+                    primary={`Room ${booking.roomNumber}`}
+                    secondary={`Booked on: ${new Date(booking.date).toLocaleDateString()}`}
+                  />
+                </ListItem>
+                <Divider />
+              </div>
+            ))}
+          </List>
+        ) : (
+          <Typography>No booking history available.</Typography>
+        )}
+      </Box>
+    </Container>
+  );
+};
+
+export default BookingHistory;
+
+//Dashboard.js
+import React from "react";
+import { Button, Box, Typography, Card, CardContent, Grid } from "@mui/material";
+import './Dashboard.css';
+
+const rooms = [
+  { id: 1, name: "Deluxe Room", price: 150, description: "A luxurious room with ocean view." },
+  { id: 2, name: "Standard Room", price: 100, description: "A comfortable room with basic amenities." },
+  { id: 4, name: "Deluxe Room", price: 150, description: "A luxurious room with ocean view." },
+  { id: 3, name: "Suite", price: 250, description: "A spacious suite with premium services." },
+  { id: 5, name: "Deluxe Room", price: 150, description: "A luxurious room with ocean view." },
+];
+
+const Dashboard = ({ setPage, setSelectedRoom }) => {
+  const handleBookNow = (room) => {
+    setSelectedRoom(room);  // Pass selected room to BookingForm
+    setPage("bookingForm");  // Navigate to the booking form
+  };
+
+  return (
+    <Box sx={{ maxWidth: 800, margin: "0 auto", padding: 4 }} className="hlo">
+      <Typography variant="h4" gutterBottom>Available Rooms</Typography>
+
+      <Grid container spacing={2} >
+        {rooms.map((room) => (
+          <Grid item xs={12} md={4} key={room.id}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6">{room.name}</Typography>
+                <Typography variant="body1">${room.price}/night</Typography>
+                <Typography variant="body2">{room.description}</Typography>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  sx={{ mt: 2 }}
+                  onClick={() => handleBookNow(room)}
+                >
+                  Book Now
+                </Button>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+
+      <Button variant="contained" color="secondary" sx={{ mt: 2 }} onClick={() => setPage("login")}>
+        Logout
+      </Button>
+    </Box>
+  );
+};
+
+export default Dashboard;
+
+//Login.js
+import React, { useState, useEffect } from "react";
+import { Box, TextField, Button, Typography } from "@mui/material";
+import axios from "axios";
+import './login.css';  // Import the CSS file
+
+const LoginForm = ({ setPage, signupData }) => {
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (signupData.email) {
+      setFormData({ email: signupData.email, password: signupData.password });
+    }
+  }, [signupData]);
+
+  const handleLogin = async () => {
+    if (!formData.email || !formData.password) {
+      setError("Both fields are required");
+      return;
+    }
+
+    try {
+      const response = await axios.get("http://localhost:5000/users");
+      const users = response.data;
+
+      const user = users.find((user) => user.email === formData.email && user.password === formData.password);
+
+      if (user) {
+        setPage("home");
+      } else {
+        setError("Invalid email or password");
+      }
+    } catch (err) {
+      console.error("Error during login:", err);
+      setError("Something went wrong, please try again later.");
+    }
+  };
+
+  return (
+    <Box className="login-container">
+      <Typography variant="h5" className="login-title">Login</Typography>
+      <TextField label="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} fullWidth margin="normal" className="login-input" />
+      <TextField label="Password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} fullWidth margin="normal" className="login-input" />
+
+      {error && <Typography className="login-error">{error}</Typography>}
+
+      <Button variant="contained" onClick={handleLogin} className="login-button">Login</Button>
+    </Box>
+  );
+};
+
+export default LoginForm;
+
+//Login.css
+import React, { useState, useEffect } from "react";
+import { Box, TextField, Button, Typography } from "@mui/material";
+import axios from "axios";
+import './login.css';  // Import the CSS file
+
+const LoginForm = ({ setPage, signupData }) => {
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (signupData.email) {
+      setFormData({ email: signupData.email, password: signupData.password });
+    }
+  }, [signupData]);
+
+  const handleLogin = async () => {
+    if (!formData.email || !formData.password) {
+      setError("Both fields are required");
+      return;
+    }
+
+    try {
+      const response = await axios.get("http://localhost:5000/users");
+      const users = response.data;
+
+      const user = users.find((user) => user.email === formData.email && user.password === formData.password);
+
+      if (user) {
+        setPage("home");
+      } else {
+        setError("Invalid email or password");
+      }
+    } catch (err) {
+      console.error("Error during login:", err);
+      setError("Something went wrong, please try again later.");
+    }
+  };
+
+  return (
+    <Box className="login-container">
+      <Typography variant="h5" className="login-title">Login</Typography>
+      <TextField label="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} fullWidth margin="normal" className="login-input" />
+      <TextField label="Password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} fullWidth margin="normal" className="login-input" />
+
+      {error && <Typography className="login-error">{error}</Typography>}
+
+      <Button variant="contained" onClick={handleLogin} className="login-button">Login</Button>
+    </Box>
+  );
+};
+
+export default LoginForm;
+
+//dashboard.js
+import React, { useState, useEffect } from "react";
+import { Box, TextField, Button, Typography } from "@mui/material";
+import axios from "axios";
+import './login.css';  // Import the CSS file
+
+const LoginForm = ({ setPage, signupData }) => {
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (signupData.email) {
+      setFormData({ email: signupData.email, password: signupData.password });
+    }
+  }, [signupData]);
+
+  const handleLogin = async () => {
+    if (!formData.email || !formData.password) {
+      setError("Both fields are required");
+      return;
+    }
+
+    try {
+      const response = await axios.get("http://localhost:5000/users");
+      const users = response.data;
+
+      const user = users.find((user) => user.email === formData.email && user.password === formData.password);
+
+      if (user) {
+        setPage("home");
+      } else {
+        setError("Invalid email or password");
+      }
+    } catch (err) {
+      console.error("Error during login:", err);
+      setError("Something went wrong, please try again later.");
+    }
+  };
+
+  return (
+    <Box className="login-container">
+      <Typography variant="h5" className="login-title">Login</Typography>
+      <TextField label="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} fullWidth margin="normal" className="login-input" />
+      <TextField label="Password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} fullWidth margin="normal" className="login-input" />
+
+      {error && <Typography className="login-error">{error}</Typography>}
+
+      <Button variant="contained" onClick={handleLogin} className="login-button">Login</Button>
+    </Box>
+  );
+};
+
+export default LoginForm;
+
+//RoomLiting.js
+import React from "react";
+import { Box, Typography, Grid, Card, CardContent, Button } from "@mui/material";
+
+const RoomListings = ({ setPage, setSelectedRoom }) => {
+  const rooms = [
+    { id: 1, name: "Deluxe Room", price: 150, description: "A luxurious room with ocean view." },
+    { id: 2, name: "Standard Room", price: 100, description: "A comfortable room with all basic amenities." },
+    { id: 3, name: "Suite", price: 250, description: "A spacious suite with premium services." },
+    { id: 4, name: "Deluxe Room", price: 150, description: "A luxurious room with ocean view." },
+    { id: 5, name: "Standard Room", price: 100, description: "A comfortable room with all basic amenities." },
+    { id: 6, name: "Suite", price: 250, description: "A spacious suite with premium services." },
+  ];
+
+  const handleBookNow = (room) => {
+    setSelectedRoom(room);  // Set the selected room
+    setPage("bookingForm");  // Navigate to the booking form
+  };
+
+  return (
+    <Box sx={{ p: 4, backgroundColor: "#f5f5f5", minHeight: "100vh" }}>
+      <Typography variant="h4" gutterBottom textAlign="center" sx={{ fontWeight: "bold", mb: 4 }}>
+        Available Rooms
+      </Typography>
+      <Grid container spacing={3} justifyContent="center">
+        {rooms.map((room) => (
+          <Grid item xs={12} sm={6} md={4} key={room.id}>
+            <Card
+              sx={{
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                backgroundColor: "#fff",
+                boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
+                "&:hover": {
+                  transform: "scale(1.03)",
+                  transition: "transform 0.3s ease-in-out",
+                },
+              }}
+            >
+              <CardContent>
+                <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                  {room.name}
+                </Typography>
+                <Typography variant="body1" sx={{ color: "#007BFF", fontSize: "1.2rem", fontWeight: "500" }}>
+                  ${room.price}/night
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 1, color: "#555" }}>
+                  {room.description}
+                </Typography>
+              </CardContent>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => handleBookNow(room)}
+                sx={{ mt: 2, mx: 2, mb: 2, backgroundColor: "#007BFF", "&:hover": { backgroundColor: "#0056b3" } }}
+              >
+                Book Now
+              </Button>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
+  );
+};
+
+export default RoomListings;
+
+//Signup.js
+import React, { useState } from "react";
+import { Box, TextField, Button, Typography } from "@mui/material";
+import axios from "axios";
+
+const SignupForm = ({ setPage, setSignupData }) => {
+ const [formData, setFormData] = useState({
+  name: "",
+  email: "",
+  password: "",
+  confirmPassword: "",
+ });
+ const [error, setError] = useState("");
+
+ const handleSignup = async () => {
+  if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+   setError("All fields are required");
+   return;
+  }
+
+  if (formData.password !== formData.confirmPassword) {
+   setError("Passwords do not match");
+   return;
+  }
+
+  try {
+   // Check if the email already exists in db.json
+   const response = await axios.get("http://localhost:5000/users");
+   const users = response.data;
+   const existingUser = users.find(user => user.email === formData.email);
+
+   if (existingUser) {
+    setError("Email is already registered");
+    return;
+   }
+
+// Proceed with signup if email is not found
+      await axios.post("http://localhost:5000/users", {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      });
+
+      setSignupData({ email: formData.email, password: formData.password });
+      setPage("login");  // Redirect to login page after successful signup
+    } catch (err) {
+      console.error("Error during signup:", err);
+      setError("Something went wrong, please try again later.");
+    }
+  };
+
+  return (
+    <Box sx={{ maxWidth: 400, margin: "0 auto", padding: 4 }} className="hlo">
+      <Typography variant="h5" gutterBottom>Signup</Typography>
+      <TextField
+        label="Full Name"
+        value={formData.name}
+        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+        fullWidth
+        margin="normal"
+      />
+      <TextField
+        label="Email"
+        value={formData.email}
+        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+        fullWidth
+        margin="normal"
+      />
+      <TextField
+        label="Password"
+        type="password"
+        value={formData.password}
+        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+        fullWidth
+        margin="normal"
+      />
+      <TextField
+        label="Confirm Password"
+        type="password"
+        value={formData.confirmPassword}
+        onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+        fullWidth
+        margin="normal"
+      />
+
+      {error && <Typography color="error">{error}</Typography>}
+
+      <Button variant="contained" onClick={handleSignup} sx={{ mt: 3 }}>
+        Signup
+      </Button>
+
+      <Button
+        variant="outlined"
+        onClick={() => setPage("login")}
+        sx={{ mt: 2, ml: 2 }}
+      >npx json-server --watch db.json --port 5000
+         Login
+      </Button>
+    </Box>
+  );
+};
+
+export default SignupForm;
+
+//Signup.css
+
+
+.signup-container {
+ 
+    margin: 100px;
+      background-color: #f0f2f5; /* Optional: light background for better contrast */
+      width: 100%;
+      max-width: 400px;
+      padding: 30px;
+      background-color: #fff;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+      border-radius: 10px;
+      text-align: center;
+    }
+    
+    .signup-title {
+      font-size: 24px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .signup-input {
+      margin-bottom: 20px;
+    }
+    
+    .signup-button {
+      width: 100%;
+      padding: 10px;
+      background-color: #007BFF;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      text-transform: none;
+      margin-top: 20px;
+    }
+    
+    .signup-button:hover {
+      background-color: #0056b3;
+    }
+    
+    .signup-error {
+      color: red;
+      margin-bottom: 10px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+//Thankyou.js
+import React from "react";
+import { Box, Typography, Button } from "@mui/material";
+
+const ThankYou = ({ name, setPage }) => {
+  return (
+    <Box sx={{ maxWidth: 400, margin: "0 auto", padding: 4 }} className="hlo">
+      <Typography variant="h4" gutterBottom>
+        Thank You, {name}!
+      </Typography>
+      <Typography variant="body1" gutterBottom>
+        Your booking has been successfully submitted. We look forward to hosting you!
+      </Typography>
+      <Button
+        variant="contained"
+        color="primary"
+        onClick={() => setPage("home")}
+        sx={{ mt: 3 }}
+      >
+        Go Back to Dashboard
+      </Button>
+    </Box>
+  );
+};
+
+export default ThankYou;
+
+//api.js
+// src/api.js
+import axios from 'axios';
+
+// Create an Axios instance with the base URL pointing to the json-server
+export default axios.create({
+  baseURL: 'http://localhost:5000',  // Your JSON server's base URL
+});
+
+//App.js
+import React, { useState } from "react";
+import SignupForm from "./components/SignUp";
+import LoginForm from "./components/Login";
+import Dashboard from "./components/Dashboard";
+import BookingForm from "./components/BookingForm";
+import ThankYou from "./components/ThankYou";
+
+const App = () => {
+  const [currentPage, setCurrentPage] = useState("signup"); // Start at signup
+  const [signupData, setSignupData] = useState({ email: "", password: "" });
+  const [selectedRoom, setSelectedRoom] = useState(null); // Store selected room
+  const [nameForThankYou, setNameForThankYou] = useState(""); // Store user's name for Thank You page
+
+  // Function to switch between pages
+  const renderPage = () => {
+    switch (currentPage) {
+      case "login":
+        return <LoginForm setPage={setCurrentPage} signupData={signupData} />;
+      case "signup":
+        return <SignupForm setPage={setCurrentPage} setSignupData={setSignupData} />;
+      case "home":
+        return <Dashboard setPage={setCurrentPage} setSelectedRoom={setSelectedRoom} />;
+      case "bookingForm":
+        return <BookingForm setPage={setCurrentPage} selectedRoom={selectedRoom} setNameForThankYou={setNameForThankYou} />;
+      case "thankYou":
+        return <ThankYou name={nameForThankYou} setPage={setCurrentPage} />;
+      default:
+        return <SignupForm setPage={setCurrentPage} setSignupData={setSignupData} />;
+    }
+  };
+
+  return <div>{renderPage()}</div>;
+};
+
+export default App;
+
+//App.css
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+//index.js
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css';
+import App from './App';
+import reportWebVitals from './reportWebVitals';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+// If you want to start measuring performance in your app, pass a function
+// to log results (for example: reportWebVitals(console.log))
+// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
+reportWebVitals();
+
